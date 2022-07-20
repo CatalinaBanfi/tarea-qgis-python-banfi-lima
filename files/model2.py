@@ -1,9 +1,14 @@
+#########################################################################################
+#########################################################################################
+
 """
 Model exported as python.
 Name : model2
 Group : 
 With QGIS : 32208
 """
+#########################################################################################
+#########################################################################################
 
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingAlgorithm
@@ -13,8 +18,13 @@ from qgis.core import QgsCoordinateReferenceSystem
 import processing
 
 
+##################################################################
+#Create model and defining as WGS 84 SR
+##################################################################
+
 class Model2(QgsProcessingAlgorithm):
 
+    #Select the layer
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterRasterDestination('Suitout', 'suitout', createByDefault=True, defaultValue=None))
 
@@ -24,8 +34,10 @@ class Model2(QgsProcessingAlgorithm):
         feedback = QgsProcessingMultiStepFeedback(2, model_feedback)
         results = {}
         outputs = {}
-
-        # Combar (reproyectar)
+        
+##################################################################
+# Warp (reproject)
+##################################################################
         alg_params = {
             'DATA_TYPE': 0,  # Usar el tipo de datos de la capa de entrada
             'EXTRA': '',
@@ -48,14 +60,20 @@ class Model2(QgsProcessingAlgorithm):
         if feedback.isCanceled():
             return {}
 
-        # Extraer proyección
+##################################################################
+# Extract projection
+##################################################################
         alg_params = {
             'INPUT': outputs['CombarReproyectar']['OUTPUT'],
             'PRJ_FILE_CREATE': False
         }
         outputs['ExtraerProyeccin'] = processing.run('gdal:extractprojection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
         return results
-
+    
+##################################################################
+# Save Model
+##################################################################
+    
     def name(self):
         return 'model2'
 

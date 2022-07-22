@@ -1,3 +1,6 @@
+        ## En este modelo vamos a utilizar el shapefile "WLDS" obtenido del modelo 1 y el shapefile "10m-admin-0-countries" 
+        ## con las fronteras de los países, obtenido de Natural Earth Data, para un archivo CSV con el número de idiomas por país.
+        
         # Definimos las rutas para los inputs y los outputs del modelo.
         
         mainpath = "/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS"
@@ -7,42 +10,26 @@
         admin = "{}/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp".format(inpath)
         outcsv = "{}/languages_by_country.csv".format(outpath)
         
-        # Fix geometries - wlds
-        alg_params = {
+        # a) Utilizamos el algoritmo "fix geometries" en el shapefile WLDS. 
+        
+        fg1_dict = {
             'INPUT': wlds,
             'OUTPUT': parameters['Fixgeo_wlds']
         }
-        outputs['FixGeometriesWlds'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        outputs['FixGeometriesWlds'] = processing.run('native:fixgeometries', fg1_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Fixgeo_wlds'] = outputs['FixGeometriesWlds']['OUTPUT']
 
-        # Fix geometries - countries
-        alg_params = {
-            'INPUT': 'C:/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS/input/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp',
+        # b) Utilizamos el algoritmo "fix geometries" en el shapefile 10m-admin-0-countries. 
+        fg2_dict = {
+            'INPUT': admin,
             'OUTPUT': parameters['Fixgeo_countries']
         }
-        outputs['FixGeometriesCountries'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        outputs['FixGeometriesCountries'] = processing.run('native:fixgeometries', fg2_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Fixgeo_countries'] = outputs['FixGeometriesCountries']['OUTPUT']
 
-        feedback.setCurrentStep(2)
-        if feedback.isCanceled():
-            return {}
-
-        # Statistics by categories
-        alg_params = {
-            'CATEGORIES_FIELD_NAME': ['ADMIN'],
-            'INPUT': 'Intersection_c289c0b1_905d_4251_ab95_56c481889c40',
-            'OUTPUT': 'C:/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS/output/languages_by_country.csv',
-            'VALUES_FIELD_NAME': '',
-            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
-        }
-        outputs['StatisticsByCategories'] = processing.run('qgis:statisticsbycategories', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-
-        feedback.setCurrentStep(3)
-        if feedback.isCanceled():
-            return {}
-
-        # Intersection
-        alg_params = {
+        # c) Realizamos la intersección entre las dos layer obtenidas en los pasos anteriores.
+        
+        int_dict = {
             'INPUT': outputs['FixGeometriesWlds']['OUTPUT'],
             'INPUT_FIELDS': ['GID'],
             'OVERLAY': outputs['FixGeometriesCountries']['OUTPUT'],
@@ -50,21 +37,15 @@
             'OVERLAY_FIELDS_PREFIX': '',
             'OUTPUT': parameters['Intersection']
         }
-        outputs['Intersection'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        outputs['Intersection'] = processing.run('native:intersection', int_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Intersection'] = outputs['Intersection']['OUTPUT']
-        return results
 
-    def name(self):
-        return 'model4a'
-
-    def displayName(self):
-        return 'model4a'
-
-    def group(self):
-        return ''
-
-    def groupId(self):
-        return ''
-
-    def createInstance(self):
-        return Model4a()
+        # d) Usamos el algoritmo statistics by categories en la intersección del punto c), guardando el resultado como archivo CSV.
+        sbc_dict = {
+            'CATEGORIES_FIELD_NAME': 'ADMIN',
+            'INPUT': outputs['Intersection']['OUTPUT'],
+            'VALUES_FIELD_NAME': '',
+            'OUTPUT': outcsv
+        }
+        outputs['StatisticsByCategories'] = processing.run('qgis:statisticsbycategories', sbc_dict, context=context, feedback=feedback, is_child_algorithm=True)
+ 

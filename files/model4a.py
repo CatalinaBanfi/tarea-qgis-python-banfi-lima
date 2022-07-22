@@ -1,14 +1,19 @@
+        # Definimos las rutas para los inputs y los outputs del modelo.
+        
+        mainpath = "/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS"
+        inpath = "{}/input".format(mainpath)
+        outpath = "{}/output".format(mainpath)
+        wlds = "{}/clean/clean.shp".format(outpath)
+        admin = "{}/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp".format(inpath)
+        outcsv = "{}/languages_by_country.csv".format(outpath)
+        
         # Fix geometries - wlds
         alg_params = {
-            'INPUT': 'C:/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS/output/clean/clean.shp',
+            'INPUT': wlds,
             'OUTPUT': parameters['Fixgeo_wlds']
         }
         outputs['FixGeometriesWlds'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
         results['Fixgeo_wlds'] = outputs['FixGeometriesWlds']['OUTPUT']
-
-        feedback.setCurrentStep(1)
-        if feedback.isCanceled():
-            return {}
 
         # Fix geometries - countries
         alg_params = {

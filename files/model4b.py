@@ -12,6 +12,31 @@
         
         csvout = "{}/centroids_closest_coast.csv".format(outpath)
         
+        # a) Cargamos el shapefile ne_10m_admin_0_countries, aplicando el algoritmo fix geometries.
+        fg1_dict = {
+            'INPUT': admin_in,
+            'OUTPUT': parameters['Fixgeo_countries']
+        }
+        outputs['FixGeometriesCountries'] = processing.run('native:fixgeometries', fg1_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Fixgeo_countries'] = outputs['FixGeometriesCountries']['OUTPUT']
+        
+        # b) Cargamos el shapefile ne_10m_coastline, aplicando el algoritmo fix geometries.
+        fg2_dict = {
+            'INPUT': coast_in,
+            'OUTPUT': parameters['Fixgeo_coast']
+        }
+        outputs['FixGeometriesCoast'] = processing.run('native:fixgeometries', fg2_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Fixgeo_coast'] = outputs['FixGeometriesCoast']['OUTPUT']
+        
+        # c) Aplicamos la función centroids a la layer de los países del punto a) para poder encontrar sus centroides.
+        cts_dict = {
+            'ALL_PARTS': False,
+            'INPUT': outputs['FixGeometriesCountries']['OUTPUT'],
+            'OUTPUT': parameters['Country_centroids']
+        }
+        outputs['Centroids'] = processing.run('native:centroids', cts_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Country_centroids'] = outputs['Centroids']['OUTPUT']
+        
         # Field calculator - add_geo_coast
         alg_params = {
             'FIELD_LENGTH': 10,
@@ -117,14 +142,6 @@
         outputs['DropFieldsCentroids_nearest_coast_joined'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
         results['Centroids_nearest_coast_joined_dropfields'] = outputs['DropFieldsCentroids_nearest_coast_joined']['OUTPUT']
 
-        # Fix geometries - countries
-        alg_params = {
-            'INPUT': 'C:/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS/input/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp',
-            'OUTPUT': parameters['Fixgeo_countries']
-        }
-        outputs['FixGeometriesCountries'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Fixgeo_countries'] = outputs['FixGeometriesCountries']['OUTPUT']
-
         # Join attributes by field value - centroids y coast
         alg_params = {
             'DISCARD_NONMATCHING': False,
@@ -170,14 +187,6 @@
             'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
         outputs['DropFieldsAdded_field_coast_lon'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-
-        # Fix geometries - coast
-        alg_params = {
-            'INPUT': 'C:/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS/input/ne_10m_coastline/ne_10m_coastline.shp',
-            'OUTPUT': parameters['Fixgeo_coast']
-        }
-        outputs['FixGeometriesCoast'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Fixgeo_coast'] = outputs['FixGeometriesCoast']['OUTPUT']
 
         # Field calculator - coast_lon
         alg_params = {
@@ -229,15 +238,6 @@
         outputs['Vdistance'] = processing.run('grass7:v.distance', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
         results['Distout'] = outputs['Vdistance']['output']
         results['Nearout'] = outputs['Vdistance']['from_output']
-
-        # Centroids
-        alg_params = {
-            'ALL_PARTS': False,
-            'INPUT': outputs['FixGeometriesCountries']['OUTPUT'],
-            'OUTPUT': parameters['Country_centroids']
-        }
-        outputs['Centroids'] = processing.run('native:centroids', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Country_centroids'] = outputs['Centroids']['OUTPUT']
 
         # Add geometry attributes
         alg_params = {

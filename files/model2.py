@@ -1,47 +1,22 @@
-#########################################################################################
-#########################################################################################
+#En este script utilizamos el raster suit/hdr.adf para crear un archivo .tif con la calidade de la tierra
 
-"""
-Model exported as python.
-Name : model2
-Group : 
-With QGIS : 32208
-"""
-#########################################################################################
-#########################################################################################
+# Definimos las rutas para los inputs y los outputs del modelo
 
-from qgis.core import QgsProcessing
-from qgis.core import QgsProcessingAlgorithm
-from qgis.core import QgsProcessingMultiStepFeedback
-from qgis.core import QgsProcessingParameterRasterDestination
-from qgis.core import QgsCoordinateReferenceSystem
-import processing
+mainpath = "/Users/catal/OneDrive - Facultad de Cs Económicas - UBA/UdeSA/Herramientas computacionales/Clase 4"
+suitin = "{}/suit/suit/hdr.adf".format(mainpath)
+outpath = "{}/_output/".format(mainpath)
+suitout = "{}/landquality.tif".format(outpath)   
 
-
+       
 ##################################################################
-#Create model and defining as WGS 84 SR
+# Warp (reproject), definido como WGS 84 SR
 ##################################################################
 
-class Model2(QgsProcessingAlgorithm):
-
-    #Select the layer
-    def initAlgorithm(self, config=None):
-        self.addParameter(QgsProcessingParameterRasterDestination('Suitout', 'suitout', createByDefault=True, defaultValue=None))
-
-    def processAlgorithm(self, parameters, context, model_feedback):
-        # Use a multi-step feedback, so that individual child algorithm progress reports are adjusted for the
-        # overall progress through the model
-        feedback = QgsProcessingMultiStepFeedback(2, model_feedback)
-        results = {}
-        outputs = {}
-        
-##################################################################
-# Warp (reproject)
-##################################################################
-        alg_params = {
+# a) A partir de la layer, usamos la funcion de reproject 
+        warp_dict = {
             'DATA_TYPE': 0,  # Usar el tipo de datos de la capa de entrada
             'EXTRA': '',
-            'INPUT': 'C:/Users/catal/OneDrive - Facultad de Cs Económicas - UBA/UdeSA/Herramientas computacionales/Clase 4/SUIT/suit/hdr.adf',
+            'INPUT': suitin,
             'MULTITHREADING': False,
             'NODATA': None,
             'OPTIONS': '',
@@ -53,38 +28,29 @@ class Model2(QgsProcessingAlgorithm):
             'TARGET_RESOLUTION': None,
             'OUTPUT': parameters['Suitout']
         }
-        outputs['CombarReproyectar'] = processing.run('gdal:warpreproject', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Suitout'] = outputs['CombarReproyectar']['OUTPUT']
+        outputs['CombarReproyectar'] = processing.run('gdal:warpreproject', warp_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Suitout'] = outputs['Suitout']['OUTPUT']
 
-        feedback.setCurrentStep(1)
-        if feedback.isCanceled():
-            return {}
-
+ 
 ##################################################################
 # Extract projection
 ##################################################################
-        alg_params = {
-            'INPUT': outputs['CombarReproyectar']['OUTPUT'],
+
+# b) Usamos esta funcion para que nos guarde el tipo de project que tiene
+        extr_proj = {
+            'INPUT': outputs['Suitout']['OUTPUT'],
             'PRJ_FILE_CREATE': False
         }
-        outputs['ExtraerProyeccin'] = processing.run('gdal:extractprojection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        return results
+        outputs['ExtraerProyeccion'] = processing.run('gdal:extractprojection', extr_proj, context=context, feedback=feedback, is_child_algorithm=True)
+ 
     
 ##################################################################
-# Save Model
+# Save
 ##################################################################
-    
-    def name(self):
-        return 'model2'
+# c) guardamos el archivo .tif
 
-    def displayName(self):
-        return 'model2'
-
-    def group(self):
-        return ''
-
-    def groupId(self):
-        return ''
-
-    def createInstance(self):
-        return Model2()
+extpr_dict = {
+    'INPUT': suitout,
+    'PRJ_FILE_CREATE': True
+}
+processing.run('gdal:extractprojection', extpr_dict)

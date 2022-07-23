@@ -150,102 +150,100 @@
         outputs['JoinAttributesByFieldValue'] = processing.run('native:joinattributestable', jafv2_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Centroids_nearest_coast_distance_join'] = outputs['JoinAttributesByFieldValue']['OUTPUT']
         
-        
-        # Field calculator - add_geo_coast
-        alg_params = {
-            'FIELD_LENGTH': 10,
-            'FIELD_NAME': 'coast_lat',
-            'FIELD_PRECISION': 10,
-            'FIELD_TYPE': 0,  # Float
-            'FORMULA': "attribute($currentfeature,'ycoord')",
-            'INPUT': 'Added_geom_info_91a0e589_a917_4bee_9157_c7923afb90e9',
-            'OUTPUT': parameters['Added_field_coast_lat']
+        # m) Usamos el algoritmo extract vertices para extraer los vértices de la layer del paso anterior.
+        ev_dict = {
+            'INPUT': outputs['JoinAttributesByFieldValue']['OUTPUT'],
+            'OUTPUT': parameters['Extract_vertices']
         }
-        outputs['FieldCalculatorAdd_geo_coast'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Added_field_coast_lat'] = outputs['FieldCalculatorAdd_geo_coast']['OUTPUT']
-
-        # Extract by attribute
-        alg_params = {
+        outputs['ExtractVertices'] = processing.run('native:extractvertices', ev_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Extract_vertices'] = outputs['ExtractVertices']['OUTPUT']
+        
+        # n) Usamos el algoritmo extract by attribute para quedarnos solo con los vértices sobre las costas.
+        eba_dict = {
             'FIELD': 'distance',
-            'INPUT': 'Vertices_446464e7_125d_4647_972c_aaaa260712e9',
+            'INPUT': outputs['ExtractVertices']['OUTPUT'],
             'OPERATOR': 2,  # >
             'VALUE': '0',
             'OUTPUT': parameters['Extract_by_attribute']
         }
-        outputs['ExtractByAttribute'] = processing.run('native:extractbyattribute', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        outputs['ExtractByAttribute'] = processing.run('native:extractbyattribute', eba_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Extract_by_attribute'] = outputs['ExtractByAttribute']['OUTPUT']
-
-        # Extract vertices
-        alg_params = {
-            'INPUT': 'Joined_layer_5cd04adb_383d_4e8c_99d0_5f0a7f0aec16',
-            'OUTPUT': parameters['Extract_vertices']
-        }
-        outputs['ExtractVertices'] = processing.run('native:extractvertices', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Extract_vertices'] = outputs['ExtractVertices']['OUTPUT']
-
-        # Add geometry attributes - centroids_lan_lon_dropfields
-        alg_params = {
-            'CALC_METHOD': 0,  # Layer CRS
-            'INPUT': 'Remaining_fields_ccba3d8a_a95a_4d6d_b38d_5a69b99151c5',
-            'OUTPUT': parameters['Add_geo_coast']
-        }
-        outputs['AddGeometryAttributesCentroids_lan_lon_dropfields'] = processing.run('qgis:exportaddgeometrycolumns', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Add_geo_coast'] = outputs['AddGeometryAttributesCentroids_lan_lon_dropfields']['OUTPUT']
-
-        # Field calculator - cent_lon
-        alg_params = {
-            'FIELD_LENGTH': 10,
-            'FIELD_NAME': 'cent_lon',
-            'FIELD_PRECISION': 10,
-            'FIELD_TYPE': 0,  # Float
-            'FORMULA': "attribute($currentfeature,'xcoord')",
-            'INPUT': 'Calculated_c401105f_82ec_4424_9748_cc41208dac1a',
-            'OUTPUT': parameters['Added_field_cent_lon']
-        }
-        outputs['FieldCalculatorCent_lon'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Added_field_cent_lon'] = outputs['FieldCalculatorCent_lon']['OUTPUT']
-
-        # Drop field(s) - added_field_cent_lon
-        alg_params = {
-            'COLUMN': ['fid','cat','xcoord','ycoord','fid_2','cat_2','vertex_index','vertex_part','vertex_part','_index','angle'],
-            'INPUT': 'Calculated_248513d4_5ed2_499f_9c23_231cdaf66235',
-            'OUTPUT': parameters['Centroids_lan_lon_dropfields']
-        }
-        outputs['DropFieldsAdded_field_cent_lon'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Centroids_lan_lon_dropfields'] = outputs['DropFieldsAdded_field_cent_lon']['OUTPUT']
-
-        # Drop field(s) - added_field_coast_lon
-        alg_params = {
-            'COLUMN': ['xcoord','ycoord'],
-            'INPUT': 'Calculated_e14fb4d2_74e3_4ba4_b33a_156b7d5485eb',
-            'OUTPUT': 'C:/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS/output/csvout.csv',
-            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
-        }
-        outputs['DropFieldsAdded_field_coast_lon'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-
-        # Field calculator - coast_lon
-        alg_params = {
-            'FIELD_LENGTH': 10,
-            'FIELD_NAME': 'coast_lon',
-            'FIELD_PRECISION': 10,
-            'FIELD_TYPE': 0,  # Float
-            'FORMULA': "attribute($currentfeature,'xcoord')",
-            'INPUT': 'Calculated_fc223fb0_06fb_4b03_a020_589e74656025',
-            'OUTPUT': parameters['Added_field_coast_lon']
-        }
-        outputs['FieldCalculatorCoast_lon'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Added_field_coast_lon'] = outputs['FieldCalculatorCoast_lon']['OUTPUT']
-
-        # Field calculator - cent_lat
-        alg_params = {
+        
+        # o) Utilizamos la función field calculator para crear una variable con la latitud de los centroides.
+        fc2_dict = {
             'FIELD_LENGTH': 10,
             'FIELD_NAME': 'cent_lat',
             'FIELD_PRECISION': 10,
             'FIELD_TYPE': 0,  # Float
             'FORMULA': "attribute($currentfeature,'ycoord')",
-            'INPUT': 'Extracted__attribute__8111e623_5613_4299_90fa_34e24ed31ddb',
+            'INPUT': outputs['ExtractByAttribute']['OUTPUT'],
             'OUTPUT': parameters['Added_field_cent_lat']
         }
-        outputs['FieldCalculatorCent_lat'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        outputs['FieldCalculatorCent_lat'] = processing.run('native:fieldcalculator', fc2_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Added_field_cent_lat'] = outputs['FieldCalculatorCent_lat']['OUTPUT']
-      
+        
+        # p) Utilizamos la función field calculator para crear una variable con la longitud de los centroides.
+        fc3_dict = {
+            'FIELD_LENGTH': 10,
+            'FIELD_NAME': 'cent_lon',
+            'FIELD_PRECISION': 10,
+            'FIELD_TYPE': 0,  # Float
+            'FORMULA': "attribute($currentfeature,'xcoord')",
+            'INPUT': outputs['FieldCalculatorCent_lat']['OUTPUT'],
+            'OUTPUT': parameters['Added_field_cent_lon']
+        }
+        outputs['FieldCalculatorCent_lon'] = processing.run('native:fieldcalculator', fc3_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Added_field_cent_lon'] = outputs['FieldCalculatorCent_lon']['OUTPUT']
+        
+        # q) Usamos el algoritmo drop fields para determinar los campos con los que queremos quedarnos de la layer de p).
+        df5_dict = {
+            'COLUMN': ['fid','cat','xcoord','ycoord','fid_2','cat_2','vertex_index','vertex_part','vertex_part','_index','angle'],
+            'INPUT': outputs['FieldCalculatorCent_lon']['OUTPUT'],
+            'OUTPUT': parameters['Centroids_lan_lon_dropfields']
+        }
+        outputs['DropFieldsAdded_field_cent_lon'] = processing.run('native:deletecolumn', df5_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Centroids_lan_lon_dropfields'] = outputs['DropFieldsAdded_field_cent_lon']['OUTPUT']
+        
+        # r) Utilizamos la función add geometry attributes para obtener las coordenadas geográficas de puntos sobre la costa.
+        aga2_dict = {
+            'CALC_METHOD': 0,  # Layer CRS
+            'INPUT': outputs['DropFieldsAdded_field_cent_lon']['OUTPUT'],
+            'OUTPUT': parameters['Add_geo_coast']
+        }
+        outputs['AddGeometryAttributesCentroids_lan_lon_dropfields'] = processing.run('qgis:exportaddgeometrycolumns', aga2_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Add_geo_coast'] = outputs['AddGeometryAttributesCentroids_lan_lon_dropfields']['OUTPUT']
+        
+        # s) Utilizamos la función field calculator para crear una variable con la latitud de los puntos sobre la costa.
+        fc4_dict = {
+            'FIELD_LENGTH': 10,
+            'FIELD_NAME': 'coast_lat',
+            'FIELD_PRECISION': 10,
+            'FIELD_TYPE': 0,  # Float
+            'FORMULA': "attribute($currentfeature,'ycoord')",
+            'INPUT': outputs['AddGeometryAttributesCentroids_lan_lon_dropfields']['OUTPUT'],
+            'OUTPUT': parameters['Added_field_coast_lat']
+        }
+        outputs['FieldCalculatorAdd_geo_coast'] = processing.run('native:fieldcalculator', fc4_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Added_field_coast_lat'] = outputs['FieldCalculatorAdd_geo_coast']['OUTPUT']
+
+        # t) Utilizamos la función field calculator para crear una variable con la longitud de los puntos sobre la costa.
+        fc5_dict = {
+            'FIELD_LENGTH': 10,
+            'FIELD_NAME': 'coast_lon',
+            'FIELD_PRECISION': 10,
+            'FIELD_TYPE': 0,  # Float
+            'FORMULA': "attribute($currentfeature,'xcoord')",
+            'INPUT': outputs['FieldCalculatorAdd_geo_coast']['OUTPUT'],
+            'OUTPUT': parameters['Added_field_coast_lon']
+        }
+        outputs['FieldCalculatorCoast_lon'] = processing.run('native:fieldcalculator', fc5_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Added_field_coast_lon'] = outputs['FieldCalculatorCoast_lon']['OUTPUT']
+        
+        # u) Usamos la función drop fields para elegir los campos con los que nos queremos quedar y guardamos el resultado como archivo CSV.
+        df6_dict = {
+            'COLUMN': ['xcoord','ycoord'],
+            'INPUT': outputs['FieldCalculatorCoast_lon']['OUTPUT'],
+            'OUTPUT': csvout,
+        }
+        outputs['DropFieldsAdded_field_coast_lon'] = processing.run('native:deletecolumn', df6_dict, context=context, feedback=feedback, is_child_algorithm=True)
+     

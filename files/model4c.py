@@ -16,45 +16,39 @@
         outputs['DropFields'] = processing.run('native:deletecolumn', drop_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Countries_dropfields'] = outputs['DropFields']['OUTPUT']
         
-        # Field calculator
-        alg_params = {
+        # b) Hacemos una reproyección cilíndrica del shapefile trabajado en el punto anterior, utilizando ESRI:54034.  
+        reproj_dict = {
+            'INPUT': outputs['DropFields']['OUTPUT'],
+            'TARGET_CRS': QgsCoordinateReferenceSystem('ESRI:54034'),
+            'OUTPUT': parameters['Countries_reprojected']
+        }
+        outputs['ReprojectLayer'] = processing.run('native:reprojectlayer', reproj_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Countries_reprojected'] = outputs['ReprojectLayer']['OUTPUT']
+        
+        # c) Utilizamos el algoritmo "fix geometries" en la layer de los países reproyectados.
+        fixgeo_dict = {
+            'INPUT': outputs['ReprojectLayer']['OUTPUT'],
+            'OUTPUT': parameters['Countries_fixgeo']
+        }
+        outputs['FixGeometriesCountries_reprojected'] = processing.run('native:fixgeometries', fixgeo_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Countries_fixgeo'] = outputs['FixGeometriesCountries_reprojected']['OUTPUT']
+        
+        # d) Utilizamos la función field calculator para realizar el cálculo del área de los países, en kilómetros cuadrados.
+        fcalc_dict = {
             'FIELD_LENGTH': 10,
             'FIELD_NAME': 'km2area',
             'FIELD_PRECISION': 3,
             'FIELD_TYPE': 0,  # Float
             'FORMULA': 'area($geometry)/1000000',
-            'INPUT': 'Fixed_geometries_de0887c3_6a08_47c5_9c46_44a044d6e76d',
+            'INPUT': outputs['FixGeometriesCountries_reprojected']['OUTPUT'],
             'OUTPUT': parameters['Areas_out']
         }
-        outputs['FieldCalculator'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        outputs['FieldCalculator'] = processing.run('native:fieldcalculator', fcalc_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Areas_out'] = outputs['FieldCalculator']['OUTPUT']
 
-        # Save vector features to file
-        alg_params = {
-            'DATASOURCE_OPTIONS': '',
-            'INPUT': 'Calculated_42d44fe1_6827_499e_bbbf_147704c881e0',
-            'LAYER_NAME': '',
-            'LAYER_OPTIONS': '',
-            'OUTPUT': 'C:/Maestría UdeSA/Materias UdeSA/Herramientas computacionales/4. Python + GIS/output/areas.csv',
-            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        # e) Guardamos el resultado en un archivo CSV.
+        vftf_dict = {
+            'INPUT': outputs['FieldCalculator']['OUTPUT'],
+            'OUTPUT': areas_out
         }
-        outputs['SaveVectorFeaturesToFile'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-
-        # Reproject layer
-        alg_params = {
-            'INPUT': 'Remaining_fields_3241545f_1a09_43dc_a054_167a6f751626',
-            'OPERATION': '',
-            'TARGET_CRS': QgsCoordinateReferenceSystem('ESRI:54034'),
-            'OUTPUT': parameters['Countries_reprojected']
-        }
-        outputs['ReprojectLayer'] = processing.run('native:reprojectlayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Countries_reprojected'] = outputs['ReprojectLayer']['OUTPUT']
-
-
-        # Fix geometries - countries_reprojected
-        alg_params = {
-            'INPUT': 'Reprojected_d8334128_2d28_40e9_aa56_f4b16311fe91',
-            'OUTPUT': parameters['Countries_fixgeo']
-        }
-        outputs['FixGeometriesCountries_reprojected'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Countries_fixgeo'] = outputs['FixGeometriesCountries_reprojected']['OUTPUT']
+        outputs['SaveVectorFeaturesToFile'] = processing.run('native:savefeatures', vftf_dict, context=context, feedback=feedback, is_child_algorithm=True)

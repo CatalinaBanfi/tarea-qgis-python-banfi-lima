@@ -64,6 +64,53 @@
         outputs['DropFieldsCentroids_w_coord'] = processing.run('native:deletecolumn', df2_dict, context=context, feedback=feedback, is_child_algorithm=True)
         results['Centroidsout'] = outputs['DropFieldsCentroids_w_coord']['OUTPUT']
         
+        # g) Aplicamos el algoritmo v.distance a las layer de los dos pasos anteriores, obteniendo el punto sobre la costa más cercano al centroide de cada país y su distancia.
+        vd_dict = {
+            'GRASS_MIN_AREA_PARAMETER': 0.0001,
+            'GRASS_OUTPUT_TYPE_PARAMETER': 0,  # auto
+            'GRASS_REGION_PARAMETER': None,
+            'GRASS_SNAP_TOLERANCE_PARAMETER': -1,
+            'GRASS_VECTOR_DSCO': '',
+            'GRASS_VECTOR_EXPORT_NOCAT': False,
+            'GRASS_VECTOR_LCO': '',
+            'column': ['xcoord'],
+            'dmax': -1,
+            'dmin': -1,
+            'from': outputs['DropFieldsCentroids_w_coord']['OUTPUT'],
+            'from_type': [0,1,3],  # point,line,area
+            'to': outputs['DropFieldsFixgeo_coast']['OUTPUT'],
+            'to_column': '',
+            'to_type': [0,1,3],  # point,line,area
+            'upload': [0],  # cat
+            'from_output': parameters['Nearout'],
+            'output': parameters['Distout']
+        }
+        outputs['Vdistance'] = processing.run('grass7:v.distance', vd_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Distout'] = outputs['Vdistance']['output']
+        results['Nearout'] = outputs['Vdistance']['from_output']
+        
+        # h) Utilizamos la función field calculator para ajustar el valor del atributo "cat" en la layer de los centroides más cercanos.
+        fc1_dict = {
+            'FIELD_LENGTH': 4,
+            'FIELD_NAME': 'cat',
+            'FIELD_PRECISION': 3,
+            'FIELD_TYPE': 1,  # Integer
+            'FORMULA': "attribute($currentfeature,'cat')-1",
+            'INPUT': outputs['Vdistance']['from_output'],
+            'OUTPUT': parameters['Nearest_cat_adjust']
+        }
+        outputs['FieldCalculatorCatAdjust'] = processing.run('native:fieldcalculator', fc1_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Nearest_cat_adjust'] = outputs['FieldCalculatorCatAdjust']['OUTPUT']
+        
+        # i) Usamos el algoritmo drop fields para determinar los campos con los que queremos quedarnos de la layer de h). 
+        df3_dict = {
+            'COLUMN': ['xcoord','ycoord'],
+            'INPUT': outputs['FieldCalculatorCatAdjust']['OUTPUT'],
+            'OUTPUT': parameters['Nearest_cat_adjust_dropfields']
+        }
+        outputs['DropFieldsNearest_cat_adjust'] = processing.run('native:deletecolumn', df3_dict, context=context, feedback=feedback, is_child_algorithm=True)
+        results['Nearest_cat_adjust_dropfields'] = outputs['DropFieldsNearest_cat_adjust']['OUTPUT']
+        
         # Field calculator - add_geo_coast
         alg_params = {
             'FIELD_LENGTH': 10,
@@ -127,15 +174,6 @@
         outputs['DropFieldsAdded_field_cent_lon'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
         results['Centroids_lan_lon_dropfields'] = outputs['DropFieldsAdded_field_cent_lon']['OUTPUT']
 
-        # Drop field(s) - nearest_cat_adjust
-        alg_params = {
-            'COLUMN': ['xcoord','ycoord'],
-            'INPUT': 'Calculated_ab194c9c_a702_4c0e_a6fd_5af6d7c57249',
-            'OUTPUT': parameters['Nearest_cat_adjust_dropfields']
-        }
-        outputs['DropFieldsNearest_cat_adjust'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Nearest_cat_adjust_dropfields'] = outputs['DropFieldsNearest_cat_adjust']['OUTPUT']
-
         # Join attributes by field value
         alg_params = {
             'DISCARD_NONMATCHING': False,
@@ -174,19 +212,6 @@
         }
         outputs['JoinAttributesByFieldValueCentroidsYCoast'] = processing.run('native:joinattributestable', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
         results['Centroids_nearest_coast_joined'] = outputs['JoinAttributesByFieldValueCentroidsYCoast']['OUTPUT']
-        
-        # Field calculator- cat adjust
-        alg_params = {
-            'FIELD_LENGTH': 4,
-            'FIELD_NAME': 'cat',
-            'FIELD_PRECISION': 3,
-            'FIELD_TYPE': 1,  # Integer
-            'FORMULA': "attribute($currentfeature,'cat')-1",
-            'INPUT': 'from_output_2c8dd046_2558_47b2_87ec_ddf85d9dec12',
-            'OUTPUT': parameters['Nearest_cat_adjust']
-        }
-        outputs['FieldCalculatorCatAdjust'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Nearest_cat_adjust'] = outputs['FieldCalculatorCatAdjust']['OUTPUT']
 
         # Drop field(s) - added_field_coast_lon
         alg_params = {
@@ -222,29 +247,4 @@
         }
         outputs['FieldCalculatorCent_lat'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
         results['Added_field_cent_lat'] = outputs['FieldCalculatorCent_lat']['OUTPUT']
-
-        # v.distance
-        alg_params = {
-            'GRASS_MIN_AREA_PARAMETER': 0.0001,
-            'GRASS_OUTPUT_TYPE_PARAMETER': 0,  # auto
-            'GRASS_REGION_PARAMETER': None,
-            'GRASS_SNAP_TOLERANCE_PARAMETER': -1,
-            'GRASS_VECTOR_DSCO': '',
-            'GRASS_VECTOR_EXPORT_NOCAT': False,
-            'GRASS_VECTOR_LCO': '',
-            'column': ['xcoord'],
-            'dmax': -1,
-            'dmin': -1,
-            'from': 'Remaining_fields_f3aa8f95_9f23_43a1_ade6_b3f355387623',
-            'from_type': [0,1,3],  # point,line,area
-            'to': 'Remaining_fields_ca89cfd8_9077_409e_8098_c01a5a2c0ae2',
-            'to_column': '',
-            'to_type': [0,1,3],  # point,line,area
-            'upload': [0],  # cat
-            'from_output': parameters['Nearout'],
-            'output': parameters['Distout']
-        }
-        outputs['Vdistance'] = processing.run('grass7:v.distance', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        results['Distout'] = outputs['Vdistance']['output']
-        results['Nearout'] = outputs['Vdistance']['from_output']
       

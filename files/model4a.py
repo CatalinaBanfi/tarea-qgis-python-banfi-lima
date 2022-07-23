@@ -1,4 +1,4 @@
-        ## En este modelo vamos a utilizar el shapefile "WLDS" obtenido del modelo 1 y el shapefile "10m-admin-0-countries" 
+        ## En este modelo vamos a utilizar el shapefile "WLDS" obtenido del modelo 1 y el shapefile "ne_10m_admin_0_countries" 
         ## con las fronteras de los países, obtenido de Natural Earth Data, para un archivo CSV con el número de idiomas por país.
         
         # Definimos las rutas para los inputs y los outputs del modelo.
